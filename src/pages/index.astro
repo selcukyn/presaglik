@@ -1,5 +1,51 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import FilterSection from '../components/FilterSection.astro';
+import LocationCard from '../components/LocationCard.astro';
+import { locations } from '../data/locations';
+---
+
+<Layout title="Sağlık Kurumları Rehberi">
+  <Header />
+  
+  <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <FilterSection />
+    
+    <div id="locationsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="col-span-full text-center py-10 text-gray-500">
+        Lütfen arama yapmak için yukarıdaki filtreleri kullanın
+      </div>
+    </div>
+  </main>
+</Layout>
+
 <script>
-  import { locations } from '../data/locations';
+  // locations verisini Astro.props üzerinden alıyoruz
+  const locations = [
+  {
+    "name": "BİLGE ECZANESİ",
+    "type": "eczane",
+    "city": "ADANA",
+    "district": "SEYHAN",
+    "address": "Bahçelievler Mahallesi Mehmet Akif Ersoy Caddesi No:74",
+    "contract": true,
+    "latitude": 36.9999228,
+    "longitude": 35.2896844,
+    "iletisim": "02164468206"
+  },
+  {
+    "name": "LOKMAN HEKİM AKAY HASTANESİ TEVKİFATSIZ",
+    "type": "hastane",
+    "city": "ANKARA",
+    "district": "ÇANKAYA",
+    "address": "AKAY CAD. BÜKLÜM SOK. NO:4 KAVAKLIDERE/ANKARA",
+    "contract": true,
+    "latitude": 39.9131629,
+    "longitude": 32.8556042
+  }
+  // ... diğer locationlar
+];
 
   class LocationManager {
     constructor() {
@@ -29,7 +75,6 @@
       });
     }
 
-    // Throttle fonksiyonu
     throttle(func, limit) {
       let inThrottle;
       return function() {
