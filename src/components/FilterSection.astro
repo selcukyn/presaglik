@@ -1,0 +1,81 @@
+---
+import { locations } from '../data/locations';
+
+const cities = [...new Set(locations.map(loc => loc.city))].sort();
+const types = [...new Set(locations.map(loc => loc.type))];
+---
+
+<div class="bg-white p-4 rounded-lg shadow-sm mb-6">
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div>
+      <label for="city" class="block text-sm font-medium text-gray-700">Şehir</label>
+      <select id="city" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+        <option value="">Tümü</option>
+        {cities.map(city => (
+          <option value={city}>{city}</option>
+        ))}
+      </select>
+    </div>
+
+    <div>
+      <label for="district" class="block text-sm font-medium text-gray-700">İlçe</label>
+      <select id="district" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+        <option value="">Tümü</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="type" class="block text-sm font-medium text-gray-700">Tür</label>
+      <select id="type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+        <option value="">Tümü</option>
+        {types.map(type => (
+          <option value={type}>{type === 'hastane' ? 'HASTANE' : 'ECZANE'}</option>
+        ))}
+      </select>
+    </div>
+
+    <div>
+      <label for="contract" class="block text-sm font-medium text-gray-700">Anlaşma Durumu</label>
+      <select id="contract" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+        <option value="">Tümü</option>
+        <option value="true">Anlaşmalı</option>
+        <option value="false">Anlaşmasız</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <button
+      id="useLocation"
+      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+      </svg>
+      Konumu Kullan
+    </button>
+  </div>
+</div>
+
+<script>
+  let userLocation = null;
+
+  // Konum kullanma işlevi
+  document.getElementById('useLocation')?.addEventListener('click', () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        userLocation = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        };
+        // Burada en yakın lokasyonları bulma işlemi yapılacak
+        console.log('Konum alındı:', userLocation);
+      }, (error) => {
+        console.error('Konum alınamadı:', error);
+        alert('Konum alınamadı. Lütfen konum izinlerini kontrol edin.');
+      });
+    } else {
+      alert('Tarayıcınız konum özelliğini desteklemiyor.');
+    }
+  });
+</script>
