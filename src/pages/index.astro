@@ -1,0 +1,21 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import FilterSection from '../components/FilterSection.astro';
+import LocationCard from '../components/LocationCard.astro';
+import { locations } from '../data/locations';
+---
+
+<Layout title="Sağlık Kurumları Rehberi">
+  <Header />
+  
+  <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <FilterSection />
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {locations.map(location => (
+        <LocationCard location={location} />
+      ))}
+    </div>
+  </main>
+</Layout>
