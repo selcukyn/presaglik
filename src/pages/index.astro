@@ -25,7 +25,7 @@ const types = locationStore.getTypes();
 
 <script>
   import { locationStore } from '../store/locationStore';
-  import { formatLocationCard, throttle } from '../utils/locationUtils';
+  import { formatLocationCard, throttle, calculateDistance } from '../utils/locationUtils';
 
   class LocationManager {
     constructor() {
@@ -35,6 +35,7 @@ const types = locationStore.getTypes();
       this.typeSelect = document.getElementById('type');
       this.contractSelect = document.getElementById('contract');
       this.resetButton = document.getElementById('resetFilters');
+      this.userLocation = null;
 
       this.initializeEventListeners();
       this.filterLocations(); // İlk yükleme için
@@ -57,6 +58,57 @@ const types = locationStore.getTypes();
         this.resetFilters();
         this.filterLocations();
       });
+
+      // Konum butonu için event listener
+      document.getElementById('useLocation')?.addEventListener('click', () => {
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => this.handleLocationSuccess(position),
+            (error) => this.handleLocationError(error),
+            {
+              enableHighAccuracy: true,
+              timeout: 5000,
+              maximumAge: 0
+            }
+          );
+        } else {
+          alert('Tarayıcınız konum özelliğini desteklemiyor.');
+        }
+      });
+    }
+
+    handleLocationSuccess(position) {
+      this.userLocation = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude
+      };
+      
+      // Tüm filtreleri sıfırla
+      this.resetFilters();
+      
+      // Lokasyonları mesafeye göre sırala ve göster
+      this.filterLocations();
+    }
+
+    handleLocationError(error) {
+      console.error('Konum alınamadı:', error);
+      let errorMessage = 'Konum alınamadı. ';
+      
+      switch(error.code) {
+        case error.PERMISSION_DENIED:
+          errorMessage += 'Konum izni reddedildi.';
+          break;
+        case error.POSITION_UNAVAILABLE:
+          errorMessage += 'Konum bilgisi kullanılamıyor.';
+          break;
+        case error.TIMEOUT:
+          errorMessage += 'Konum isteği zaman aşımına uğradı.';
+          break;
+        default:
+          errorMessage += 'Bilinmeyen bir hata oluştu.';
+      }
+      
+      alert(errorMessage);
     }
 
     updateDistricts(selectedCity) {
@@ -96,13 +148,15 @@ const types = locationStore.getTypes();
       const selectedType = this.typeSelect?.value;
       const selectedContract = this.contractSelect?.value;
 
-      if (!selectedCity && !selectedDistrict && !selectedType && selectedContract === '') {
+      if (!selectedCity && !selectedDistrict && !selectedType && selectedContract === '' && !this.userLocation) {
         this.showMessage('Lütfen arama yapmak için yukarıdaki filtreleri kullanın');
         return;
       }
 
-      const locations = locationStore.getLocations();
-      const filteredLocations = locations.filter(location => {
+      let locations = locationStore.getLocations();
+      
+      // Filtreleme
+      let filteredLocations = locations.filter(location => {
         if (selectedCity && location.city !== selectedCity) return false;
         if (selectedDistrict && location.district !== selectedDistrict) return false;
         if (selectedType && location.type !== selectedType) return false;
@@ -111,6 +165,19 @@ const types = locationStore.getTypes();
         }
         return true;
       });
+
+      // Kullanıcı konumu varsa mesafeleri hesapla ve sırala
+      if (this.userLocation) {
+        filteredLocations = filteredLocations.map(location => ({
+          ...location,
+          distance: calculateDistance(
+            this.userLocation.latitude,
+            this.userLocation.longitude,
+            location.latitude,
+            location.longitude
+          )
+        })).sort((a, b) => a.distance - b.distance);
+      }
 
       this.updateLocationsList(filteredLocations);
     }
