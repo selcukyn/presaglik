@@ -56,7 +56,6 @@ const types = locationStore.getTypes();
       
       this.resetButton?.addEventListener('click', () => {
         this.resetFilters();
-        this.filterLocations();
       });
 
       // Konum butonu için event listener
@@ -130,15 +129,23 @@ const types = locationStore.getTypes();
       }
     }
 
-    resetFilters() {
-      if (!this.citySelect || !this.districtSelect || !this.typeSelect || !this.contractSelect) return;
+// resetFilters metodunu güncelleyin
+resetFilters() {
+  if (!this.citySelect || !this.districtSelect || !this.typeSelect || !this.contractSelect) return;
 
-      this.citySelect.value = '';
-      this.districtSelect.value = '';
-      this.districtSelect.disabled = true;
-      this.typeSelect.value = '';
-      this.contractSelect.value = '';
-    }
+  // Form filtrelerini sıfırla
+  this.citySelect.value = '';
+  this.districtSelect.value = '';
+  this.districtSelect.disabled = true;
+  this.typeSelect.value = '';
+  this.contractSelect.value = '';
+
+  // Konum bilgisini sıfırla
+  this.userLocation = null;
+
+  // Başlangıç mesajını göster
+  this.showMessage('Lütfen arama yapmak için yukarıdaki filtreleri kullanın');
+}
 
     filterLocations() {
       if (!this.locationsList) return;
