@@ -1,5 +1,5 @@
 export const locations = [
- 
+
   {
     "name": "BİLGE ECZANESİ",
     "type": "eczane",
