@@ -2,8 +2,11 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import FilterSection from '../components/FilterSection.astro';
-import LocationCard from '../components/LocationCard.astro';
-import { locations } from '../data/locations';
+import { locationStore } from '../store/locationStore';
+
+// Sayfa yüklenirken ihtiyaç duyulan verileri hazırla
+const cities = locationStore.getCities();
+const types = locationStore.getTypes();
 ---
 
 <Layout title="Sağlık Kurumları Rehberi">
@@ -21,31 +24,8 @@ import { locations } from '../data/locations';
 </Layout>
 
 <script>
-  // locations verisini Astro.props üzerinden alıyoruz
-  const locations = [
-  {
-    "name": "BİLGE ECZANESİ",
-    "type": "eczane",
-    "city": "ADANA",
-    "district": "SEYHAN",
-    "address": "Bahçelievler Mahallesi Mehmet Akif Ersoy Caddesi No:74",
-    "contract": true,
-    "latitude": 36.9999228,
-    "longitude": 35.2896844,
-    "iletisim": "02164468206"
-  },
-  {
-    "name": "LOKMAN HEKİM AKAY HASTANESİ TEVKİFATSIZ",
-    "type": "hastane",
-    "city": "ANKARA",
-    "district": "ÇANKAYA",
-    "address": "AKAY CAD. BÜKLÜM SOK. NO:4 KAVAKLIDERE/ANKARA",
-    "contract": true,
-    "latitude": 39.9131629,
-    "longitude": 32.8556042
-  }
-  // ... diğer locationlar
-];
+  import { locationStore } from '../store/locationStore';
+  import { formatLocationCard, throttle } from '../utils/locationUtils';
 
   class LocationManager {
     constructor() {
@@ -61,30 +41,40 @@ import { locations } from '../data/locations';
     }
 
     initializeEventListeners() {
-      // Throttle ile performansı iyileştirme
-      const throttledFilter = this.throttle(() => this.filterLocations(), 100);
+      const throttledFilter = throttle(() => this.filterLocations(), 100);
 
-      this.citySelect?.addEventListener('change', throttledFilter);
+      this.citySelect?.addEventListener('change', (e) => {
+        const selectedCity = e.target.value;
+        this.updateDistricts(selectedCity);
+        throttledFilter();
+      });
+
       this.districtSelect?.addEventListener('change', throttledFilter);
       this.typeSelect?.addEventListener('change', throttledFilter);
       this.contractSelect?.addEventListener('change', throttledFilter);
       
       this.resetButton?.addEventListener('click', () => {
         this.resetFilters();
-        this.filterLocations(); // Anında filtreleme
+        this.filterLocations();
       });
     }
 
-    throttle(func, limit) {
-      let inThrottle;
-      return function() {
-        const args = arguments;
-        const context = this;
-        if (!inThrottle) {
-          func.apply(context, args);
-          inThrottle = true;
-          setTimeout(() => inThrottle = false, limit);
-        }
+    updateDistricts(selectedCity) {
+      if (!this.districtSelect) return;
+
+      this.districtSelect.innerHTML = '<option value="">Tümü</option>';
+      
+      if (selectedCity) {
+        const districts = locationStore.getDistrictsByCity(selectedCity);
+        districts.forEach(district => {
+          const option = document.createElement('option');
+          option.value = district;
+          option.textContent = district;
+          this.districtSelect.appendChild(option);
+        });
+        this.districtSelect.disabled = false;
+      } else {
+        this.districtSelect.disabled = true;
       }
     }
 
@@ -106,12 +96,12 @@ import { locations } from '../data/locations';
       const selectedType = this.typeSelect?.value;
       const selectedContract = this.contractSelect?.value;
 
-      // Hiçbir filtre seçili değilse başlangıç mesajını göster
       if (!selectedCity && !selectedDistrict && !selectedType && selectedContract === '') {
         this.showMessage('Lütfen arama yapmak için yukarıdaki filtreleri kullanın');
         return;
       }
 
+      const locations = locationStore.getLocations();
       const filteredLocations = locations.filter(location => {
         if (selectedCity && location.city !== selectedCity) return false;
         if (selectedDistrict && location.district !== selectedDistrict) return false;
@@ -143,61 +133,12 @@ import { locations } from '../data/locations';
         return;
       }
 
-      // DocumentFragment kullanarak performansı artırma
       const fragment = document.createDocumentFragment();
       
       filteredLocations.forEach(location => {
         const div = document.createElement('div');
         div.className = 'bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow';
-        div.innerHTML = `
-          <div class="flex justify-between items-start">
-            <div>
-              <div class="flex items-center">
-                <span class="text-2xl mr-2">${location.type === 'hastane' ? '🏥' : '💊'}</span>
-                <h3 class="text-lg font-semibold text-gray-900">${location.name}</h3>
-              </div>
-              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                location.contract 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
-              } mt-2">
-                ${location.contract ? 'Anlaşmalı' : 'Anlaşmasız'}
-              </span>
-            </div>
-          </div>
-
-          <div class="mt-4 space-y-2">
-            <p class="text-sm text-gray-500">
-              <span class="font-medium">Adres:</span> ${location.address}
-            </p>
-            <p class="text-sm text-gray-500">
-              <span class="font-medium">Şehir/İlçe:</span> ${location.city}/${location.district}
-            </p>
-            ${location.iletisim ? `
-              <p class="text-sm text-gray-500">
-                <span class="font-medium">İletişim:</span> 
-                <a href="tel:${location.iletisim}" class="text-blue-600 hover:text-blue-800">
-                  ${location.iletisim}
-                </a>
-              </p>
-            ` : ''}
-          </div>
-
-          <div class="mt-4">
-            <a
-              href="https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}&destination_place_id=${encodeURIComponent(location.name)}"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
-            >
-              Yol Tarifi
-              <svg class="ml-1 w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
-                <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
-              </svg>
-            </a>
-          </div>
-        `;
+        div.innerHTML = formatLocationCard(location);
         fragment.appendChild(div);
       });
 
