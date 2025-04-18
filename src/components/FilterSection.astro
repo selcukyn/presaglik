@@ -3,13 +3,30 @@ import { locations } from '../data/locations';
 
 const cities = [...new Set(locations.map(loc => loc.city))].sort();
 const types = [...new Set(locations.map(loc => loc.type))];
+
+// Şehirlere göre ilçeleri grupla
+const districtsByCity = locations.reduce((acc, loc) => {
+  if (!acc[loc.city]) {
+    acc[loc.city] = new Set();
+  }
+  acc[loc.city].add(loc.district);
+  return acc;
+}, {});
+
+// Her şehir için ilçeleri diziye çevir ve sırala
+Object.keys(districtsByCity).forEach(city => {
+  districtsByCity[city] = [...districtsByCity[city]].sort();
+});
 ---
 
 <div class="bg-white p-4 rounded-lg shadow-sm mb-6">
   <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
     <div>
       <label for="city" class="block text-sm font-medium text-gray-700">Şehir</label>
-      <select id="city" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+      <select 
+        id="city" 
+        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+      >
         <option value="">Tümü</option>
         {cities.map(city => (
           <option value={city}>{city}</option>
@@ -19,14 +36,21 @@ const types = [...new Set(locations.map(loc => loc.type))];
 
     <div>
       <label for="district" class="block text-sm font-medium text-gray-700">İlçe</label>
-      <select id="district" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+      <select 
+        id="district" 
+        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+        disabled
+      >
         <option value="">Tümü</option>
       </select>
     </div>
 
     <div>
       <label for="type" class="block text-sm font-medium text-gray-700">Tür</label>
-      <select id="type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+      <select 
+        id="type" 
+        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+      >
         <option value="">Tümü</option>
         {types.map(type => (
           <option value={type}>{type === 'hastane' ? 'HASTANE' : 'ECZANE'}</option>
@@ -36,7 +60,10 @@ const types = [...new Set(locations.map(loc => loc.type))];
 
     <div>
       <label for="contract" class="block text-sm font-medium text-gray-700">Anlaşma Durumu</label>
-      <select id="contract" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+      <select 
+        id="contract" 
+        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+      >
         <option value="">Tümü</option>
         <option value="true">Anlaşmalı</option>
         <option value="false">Anlaşmasız</option>
@@ -57,8 +84,41 @@ const types = [...new Set(locations.map(loc => loc.type))];
   </div>
 </div>
 
-<script>
+<script define:vars={{ districtsByCity }}>
   let userLocation = null;
+  const citySelect = document.getElementById('city');
+  const districtSelect = document.getElementById('district');
+  const typeSelect = document.getElementById('type');
+  const contractSelect = document.getElementById('contract');
+
+  // Şehir değiştiğinde ilçeleri güncelle
+  citySelect?.addEventListener('change', (e) => {
+    const selectedCity = e.target.value;
+    updateDistricts(selectedCity);
+  });
+
+  // İlçeleri güncelleme fonksiyonu
+  function updateDistricts(selectedCity) {
+    if (!districtSelect) return;
+
+    // İlçe select'ini temizle
+    districtSelect.innerHTML = '<option value="">Tümü</option>';
+    
+    if (selectedCity) {
+      // Seçili şehrin ilçelerini ekle
+      const districts = districtsByCity[selectedCity] || [];
+      districts.forEach(district => {
+        const option = document.createElement('option');
+        option.value = district;
+        option.textContent = district;
+        districtSelect.appendChild(option);
+      });
+      districtSelect.disabled = false;
+    } else {
+      // Şehir seçili değilse ilçe seçimini devre dışı bırak
+      districtSelect.disabled = true;
+    }
+  }
 
   // Konum kullanma işlevi
   document.getElementById('useLocation')?.addEventListener('click', () => {
@@ -70,6 +130,14 @@ const types = [...new Set(locations.map(loc => loc.type))];
         };
         // Burada en yakın lokasyonları bulma işlemi yapılacak
         console.log('Konum alındı:', userLocation);
+        
+        // Konum alındığında filtreleri sıfırla
+        citySelect.value = '';
+        districtSelect.value = '';
+        districtSelect.disabled = true;
+        typeSelect.value = '';
+        contractSelect.value = '';
+
       }, (error) => {
         console.error('Konum alınamadı:', error);
         alert('Konum alınamadı. Lütfen konum izinlerini kontrol edin.');
