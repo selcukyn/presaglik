@@ -71,7 +71,7 @@ Object.keys(districtsByCity).forEach(city => {
     </div>
   </div>
 
-  <div class="mt-4">
+  <div class="mt-4 flex space-x-4">
     <button
       id="useLocation"
       class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -80,6 +80,13 @@ Object.keys(districtsByCity).forEach(city => {
         <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
       </svg>
       Konumu Kullan
+    </button>
+
+    <button
+      id="resetFilters"
+      class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+    >
+      Filtreleri Sıfırla
     </button>
   </div>
 </div>
@@ -90,11 +97,25 @@ Object.keys(districtsByCity).forEach(city => {
   const districtSelect = document.getElementById('district');
   const typeSelect = document.getElementById('type');
   const contractSelect = document.getElementById('contract');
+  const resetButton = document.getElementById('resetFilters');
 
   // Şehir değiştiğinde ilçeleri güncelle
   citySelect?.addEventListener('change', (e) => {
     const selectedCity = e.target.value;
     updateDistricts(selectedCity);
+  });
+
+  // Filtreleri sıfırlama
+  resetButton?.addEventListener('click', () => {
+    citySelect.value = '';
+    districtSelect.value = '';
+    districtSelect.disabled = true;
+    typeSelect.value = '';
+    contractSelect.value = '';
+    
+    // Filtreleme fonksiyonunu çağır
+    const event = new Event('change');
+    citySelect.dispatchEvent(event);
   });
 
   // İlçeleri güncelleme fonksiyonu
@@ -132,11 +153,7 @@ Object.keys(districtsByCity).forEach(city => {
         console.log('Konum alındı:', userLocation);
         
         // Konum alındığında filtreleri sıfırla
-        citySelect.value = '';
-        districtSelect.value = '';
-        districtSelect.disabled = true;
-        typeSelect.value = '';
-        contractSelect.value = '';
+        resetButton.click();
 
       }, (error) => {
         console.error('Konum alınamadı:', error);
