@@ -27,199 +27,184 @@ const types = locationStore.getTypes();
   import { locationStore } from '../store/locationStore';
   import { formatLocationCard, throttle, calculateDistance } from '../utils/locationUtils';
 
-  class LocationManager {
-    constructor() {
-      this.locationsList = document.getElementById('locationsList');
-      this.citySelect = document.getElementById('city');
-      this.districtSelect = document.getElementById('district');
-      this.typeSelect = document.getElementById('type');
-      this.contractSelect = document.getElementById('contract');
-      this.resetButton = document.getElementById('resetFilters');
-      this.userLocation = null;
+ class LocationManager {
+  constructor() {
+    this.locationsList = document.getElementById('locationsList');
+    this.citySelect = document.getElementById('city');
+    this.districtSelect = document.getElementById('district');
+    this.typeSelect = document.getElementById('type');
+    this.contractSelect = document.getElementById('contract');
+    this.resetButton = document.getElementById('resetFilters');
+    this.useLocationButton = document.getElementById('useLocation');
+    this.userLocation = null;
 
-      this.initializeEventListeners();
-      this.filterLocations(); // İlk yükleme için
-    }
+    this.initializeEventListeners();
+    this.filterLocations(); // İlk yükleme için
+  }
 
-    initializeEventListeners() {
-      const throttledFilter = throttle(() => this.filterLocations(), 100);
+  // Event listener'ları başlat
+  initializeEventListeners() {
+    const throttledFilter = throttle(() => this.filterLocations(), 100);
 
-      this.citySelect?.addEventListener('change', (e) => {
-        const selectedCity = e.target.value;
-        this.updateDistricts(selectedCity);
-        throttledFilter();
-      });
+    this.citySelect?.addEventListener('change', throttledFilter);
+    this.districtSelect?.addEventListener('change', throttledFilter);
+    this.typeSelect?.addEventListener('change', throttledFilter);
+    this.contractSelect?.addEventListener('change', throttledFilter);
 
-      this.districtSelect?.addEventListener('change', throttledFilter);
-      this.typeSelect?.addEventListener('change', throttledFilter);
-      this.contractSelect?.addEventListener('change', throttledFilter);
-      
-      this.resetButton?.addEventListener('click', () => {
-        this.resetFilters();
-      });
-
-      // Konum butonu için event listener
-      document.getElementById('useLocation')?.addEventListener('click', () => {
-        if ("geolocation" in navigator) {
-          navigator.geolocation.getCurrentPosition(
-            (position) => this.handleLocationSuccess(position),
-            (error) => this.handleLocationError(error),
-            {
-              enableHighAccuracy: true,
-              timeout: 5000,
-              maximumAge: 0
-            }
-          );
-        } else {
-          alert('Tarayıcınız konum özelliğini desteklemiyor.');
-        }
-      });
-    }
-
-    handleLocationSuccess(position) {
-      this.userLocation = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude
-      };
-      
-      // Tüm filtreleri sıfırla
+    this.resetButton?.addEventListener('click', () => {
       this.resetFilters();
-      
-      // Lokasyonları mesafeye göre sırala ve göster
-      this.filterLocations();
-    }
+    });
 
-    handleLocationError(error) {
-      console.error('Konum alınamadı:', error);
-      let errorMessage = 'Konum alınamadı. ';
-      
-      switch(error.code) {
-        case error.PERMISSION_DENIED:
-          errorMessage += 'Konum izni reddedildi.';
-          break;
-        case error.POSITION_UNAVAILABLE:
-          errorMessage += 'Konum bilgisi kullanılamıyor.';
-          break;
-        case error.TIMEOUT:
-          errorMessage += 'Konum isteği zaman aşımına uğradı.';
-          break;
-        default:
-          errorMessage += 'Bilinmeyen bir hata oluştu.';
-      }
-      
-      alert(errorMessage);
-    }
+    this.useLocationButton?.addEventListener('click', () => {
+      this.getUserLocation();
+    });
+  }
 
-    updateDistricts(selectedCity) {
-      if (!this.districtSelect) return;
-
-      this.districtSelect.innerHTML = '<option value="">Tümü</option>';
-      
-      if (selectedCity) {
-        const districts = locationStore.getDistrictsByCity(selectedCity);
-        districts.forEach(district => {
-          const option = document.createElement('option');
-          option.value = district;
-          option.textContent = district;
-          this.districtSelect.appendChild(option);
-        });
-        this.districtSelect.disabled = false;
-      } else {
-        this.districtSelect.disabled = true;
-      }
-    }
-
-// resetFilters metodunu güncelleyin
-resetFilters() {
-  if (!this.citySelect || !this.districtSelect || !this.typeSelect || !this.contractSelect) return;
-
-  // Form filtrelerini sıfırla
-  this.citySelect.value = '';
-  this.districtSelect.value = '';
-  this.districtSelect.disabled = true;
-  this.typeSelect.value = '';
-  this.contractSelect.value = '';
-
-  // Konum bilgisini sıfırla
-  this.userLocation = null;
-
-  // Başlangıç mesajını göster
-  this.showMessage('Lütfen arama yapmak için yukarıdaki filtreleri kullanın');
-}
-
-    filterLocations() {
-      if (!this.locationsList) return;
-
-      const selectedCity = this.citySelect?.value;
-      const selectedDistrict = this.districtSelect?.value;
-      const selectedType = this.typeSelect?.value;
-      const selectedContract = this.contractSelect?.value;
-
-      if (!selectedCity && !selectedDistrict && !selectedType && selectedContract === '' && !this.userLocation) {
-        this.showMessage('Lütfen arama yapmak için yukarıdaki filtreleri kullanın');
-        return;
-      }
-
-      let locations = locationStore.getLocations();
-      
-      // Filtreleme
-      let filteredLocations = locations.filter(location => {
-        if (selectedCity && location.city !== selectedCity) return false;
-        if (selectedDistrict && location.district !== selectedDistrict) return false;
-        if (selectedType && location.type !== selectedType) return false;
-        if (selectedContract !== '') {
-          return location.contract === (selectedContract === 'true');
+  // Kullanıcıdan konum bilgisi al
+  getUserLocation() {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => this.handleLocationSuccess(position),
+        (error) => this.handleLocationError(error),
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
         }
-        return true;
-      });
-
-      // Kullanıcı konumu varsa mesafeleri hesapla ve sırala
-      if (this.userLocation) {
-        filteredLocations = filteredLocations.map(location => ({
-          ...location,
-          distance: calculateDistance(
-            this.userLocation.latitude,
-            this.userLocation.longitude,
-            location.latitude,
-            location.longitude
-          )
-        })).sort((a, b) => a.distance - b.distance);
-      }
-
-      this.updateLocationsList(filteredLocations);
-    }
-
-    showMessage(message) {
-      if (!this.locationsList) return;
-      
-      this.locationsList.innerHTML = `
-        <div class="col-span-full text-center py-10 text-gray-500">
-          ${message}
-        </div>
-      `;
-    }
-
-    updateLocationsList(filteredLocations) {
-      if (!this.locationsList) return;
-
-      if (filteredLocations.length === 0) {
-        this.showMessage('Seçili kriterlere uygun sonuç bulunamadı');
-        return;
-      }
-
-      const fragment = document.createDocumentFragment();
-      
-      filteredLocations.forEach(location => {
-        const div = document.createElement('div');
-        div.className = 'bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow';
-        div.innerHTML = formatLocationCard(location);
-        fragment.appendChild(div);
-      });
-
-      this.locationsList.innerHTML = '';
-      this.locationsList.appendChild(fragment);
+      );
+    } else {
+      alert('Tarayıcınız konum özelliğini desteklemiyor.');
     }
   }
+
+  // Konum başarıyla alındığında
+  handleLocationSuccess(position) {
+    this.userLocation = {
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude
+    };
+
+    // Tüm filtreleri sıfırla ve konumla arama yap
+    this.resetFilters(false); // Konumu sıfırlama
+    this.filterLocations();
+  }
+
+  // Konum alınamadığında hata mesajı göster
+  handleLocationError(error) {
+    console.error('Konum alınamadı:', error);
+    let errorMessage = 'Konum alınamadı. ';
+    switch (error.code) {
+      case error.PERMISSION_DENIED:
+        errorMessage += 'Konum izni reddedildi.';
+        break;
+      case error.POSITION_UNAVAILABLE:
+        errorMessage += 'Konum bilgisi kullanılamıyor.';
+        break;
+      case error.TIMEOUT:
+        errorMessage += 'Konum isteği zaman aşımına uğradı.';
+        break;
+      default:
+        errorMessage += 'Bilinmeyen bir hata oluştu.';
+    }
+    alert(errorMessage);
+  }
+
+  // Filtreleri sıfırla
+  resetFilters(resetLocation = true) {
+    if (!this.citySelect || !this.districtSelect || !this.typeSelect || !this.contractSelect) return;
+
+    // Form filtrelerini sıfırla
+    this.citySelect.value = '';
+    this.districtSelect.value = '';
+    this.districtSelect.disabled = true;
+    this.typeSelect.value = '';
+    this.contractSelect.value = '';
+
+    // Konum bilgisini sıfırla (isteğe bağlı)
+    if (resetLocation) {
+      this.userLocation = null;
+    }
+
+    // Başlangıç mesajını göster
+    this.showMessage('Lütfen arama yapmak için yukarıdaki filtreleri kullanın');
+  }
+
+  // Lokasyonları filtrele
+  filterLocations() {
+    if (!this.locationsList) return;
+
+    const selectedCity = this.citySelect?.value;
+    const selectedDistrict = this.districtSelect?.value;
+    const selectedType = this.typeSelect?.value;
+    const selectedContract = this.contractSelect?.value;
+
+    if (!selectedCity && !selectedDistrict && !selectedType && selectedContract === '' && !this.userLocation) {
+      this.showMessage('Lütfen arama yapmak için yukarıdaki filtreleri kullanın');
+      return;
+    }
+
+    let locations = locationStore.getLocations();
+
+    // Filtreleme işlemi
+    let filteredLocations = locations.filter(location => {
+      if (selectedCity && location.city !== selectedCity) return false;
+      if (selectedDistrict && location.district !== selectedDistrict) return false;
+      if (selectedType && location.type !== selectedType) return false;
+      if (selectedContract !== '') {
+        return location.contract === (selectedContract === 'true');
+      }
+      return true;
+    });
+
+    // Konum varsa mesafeleri hesapla ve sırala
+    if (this.userLocation) {
+      filteredLocations = filteredLocations.map(location => ({
+        ...location,
+        distance: calculateDistance(
+          this.userLocation.latitude,
+          this.userLocation.longitude,
+          location.latitude,
+          location.longitude
+        )
+      })).sort((a, b) => a.distance - b.distance);
+    }
+
+    this.updateLocationsList(filteredLocations);
+  }
+
+  // Lokasyon listesini güncelle
+  updateLocationsList(filteredLocations) {
+    if (!this.locationsList) return;
+
+    if (filteredLocations.length === 0) {
+      this.showMessage('Seçili kriterlere uygun sonuç bulunamadı');
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+
+    filteredLocations.forEach(location => {
+      const div = document.createElement('div');
+      div.className = 'bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow';
+      div.innerHTML = formatLocationCard(location);
+      fragment.appendChild(div);
+    });
+
+    this.locationsList.innerHTML = '';
+    this.locationsList.appendChild(fragment);
+  }
+
+  // Başlangıç mesajını göster
+  showMessage(message) {
+    if (!this.locationsList) return;
+
+    this.locationsList.innerHTML = `
+      <div class="col-span-full text-center py-10 text-gray-500">
+        ${message}
+      </div>
+    `;
+  }
+}
 
   // Sayfa yüklendiğinde Location Manager'ı başlat
   new LocationManager();
